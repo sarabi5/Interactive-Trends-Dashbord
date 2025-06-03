@@ -1,0 +1,188 @@
+---
+output: flexdashboard::flex_dashboard
+runtime: shiny
+---
+
+```{r global, include = FALSE}
+
+library(Lahman)
+library(dplyr)
+data(Teams)
+
+ave.so <- Teams$SO / Teams$G
+year <- Teams$yearID
+
+ave.so.min <- min(ave.so, na.rm = TRUE)
+ave.so.max <- max(ave.so, na.rm = TRUE)
+
+league.ave <- tapply(X = ave.so, 
+                     INDEX = as.factor(year), 
+                     FUN = "mean", 
+                     na.rm = TRUE)
+
+league.year <- as.numeric(names(league.ave))
+
+Teams$ave.so <- ave.so
+
+```
+
+
+
+Column {.sidebar}
+-----------------------------------------------------------------------
+
+Select a team to highlight on the graph.
+
+```{r}
+
+selectInput(
+  
+  inputId = "my_team",
+  
+  label = "Select a team:",
+  
+  choices = c("New York Yankees",
+              "Boston Red Sox",
+              "Oakland Athletics",
+              "Cincinnati Reds",
+              "Pittsburgh Pirates",
+              "Philadelphia Phillies",
+              "St. Louis Cardinals",
+              "Chicago White Sox",
+              "Detroit Tigers",
+              "Chicago Cubs",
+              "Cleveland Indians"),
+  
+  selected = "Boston Red Sox"
+  
+  )
+
+```
+
+
+Column
+-----------------------------------------------------------------------
+
+```{r}
+
+renderPlot({
+
+index <- which(Teams$yearID <= 2012 & Teams$yearID >= 1900)
+
+Teams <- Teams[index, ]
+  
+index <- which(year <= 2012 & year >= 1900)
+
+ave.so <- ave.so[index]
+year <- year[index]
+
+index <- which(league.year <= 2012 
+               & league.year >= 1900)
+
+league.ave <- league.ave[index]
+league.year <- league.year[index]
+
+team.name <- input$my_team                  
+                                            # Calls to 'input$' must occur in 'renderPlot({...})'
+
+dat.one.team <- filter(Teams, 
+                       name == team.name)   
+
+                                            
+                                            
+plot.new()
+
+plot.window(xlim = c(1900, 2012), 
+            ylim = c(ave.so.min, 
+                     ave.so.max))
+
+points(x = year, 
+       y = ave.so,
+       col = "gray85",
+       pch = 16,
+       cex = 0.75)
+axis(side = 1,                      
+     lwd = 2,                       
+     hadj = -0.1,                   
+     padj = -1,                     
+     at = seq(from = 1900, 
+              to = 2010, 
+              by = 10))             
+
+axis(side = 4,                      
+     lwd = 0,                       
+     las = 1,                       
+     col.axis = "gray85",           
+     at = seq(from = 0,             
+              to = 9, 
+              by = 1), 
+     font.axis = 2)                 
+
+# Add horizontal gridlines
+abline(h = seq(from = 0, to = 9, by = 1), lty = 3, col = "gray90")
+
+# Calculate the league average for each year
+league.ave <- tapply(X = ave.so, INDEX = as.factor(year), FUN = "mean", na.rm = TRUE)
+league.year <- as.numeric(names(league.ave))
+
+# Plot the trend line for the league average
+lines(x = league.year, y = league.ave, col = "darkblue", lwd = 2)
+
+# Emphasize averages in 1924 and 2012
+ave_1924 <- round(league.ave[which(league.year == 1924)], 1)
+ave_2012 <- round(league.ave[which(league.year == 2012)], 1)
+
+points(x = 1924, y = ave_1924, col = "darkblue", pch = 16, cex = 1.5)
+points(x = 2012, y = ave_2012, col = "darkblue", pch = 16, cex = 1.5)
+
+# Add text labels for the emphasized averages
+text(x = 1924, y = ave_1924-0.3, labels = ave_1924, col = "darkblue", pos = 2, offset = -0.5)
+text(x = 2012, y = ave_2012+0.4, labels = ave_2012, col = "darkblue", pos = 4, offset = -0.5)
+
+# Add text description for the averages
+text(x = 1924, y = ave_1924 - 0.5, labels = "League Average 1924", col = "black", pos = 1, cex = 0.8)
+text(x = 2012-6, y = ave_2012 + 1, labels = "League Average 2012", col = "black", pos = 1, cex = 0.8)
+
+# Add a title
+title(main = "Strikeouts on the Rise", adj = 0, line = -1.5)
+
+# Add a subtitle below the title
+mtext(text = "There were more strikeouts in 2012 than at any other time in major league history.", side = 3, line = -3, adj = 0, cex = 0.8)
+
+# Add text annotations for historical events
+text(x = 1917, y = 1, labels = "    US entered\n    World War I", col = "gray", pos = 3, cex = 0.8)
+text(x = 1946, y = 1, labels = "   Players\n    returned\n     from\n     World War II", col = "gray", pos = 3, cex = 0.8)
+text(x = 1964, y = 1, labels = "    Strike\n     zone\n     enlarged", col = "gray", pos = 3, cex = 0.8)
+text(x = 1973, y = 1, labels = "    Designated\n     hitter rule\n     took\n     effect", col = "gray", pos = 3, cex = 0.8)
+text(x = 2007, y = 1, labels = "    Mitchell\n     report\n     on steroids", col = "gray", pos = 3, cex = 0.8)
+
+# Draw lines connecting historical event points to text annotations
+segments(x0 = 1917, y0 = ave.so.min+3.1, x1 = 1917, y1 = 1.8, col = "gray", lwd = 1)
+segments(x0 = 1946, y0 = ave.so.min+3.5, x1 = 1946, y1 = 2.2, col = "gray", lwd = 1)
+segments(x0 = 1964, y0 = ave.so.min+5.6, x1 = 1964, y1 = 2.1, col = "gray", lwd = 1)
+segments(x0 = 1973, y0 = ave.so.min+5, x1 = 1973, y1 = 2.3, col = "gray", lwd = 1)
+segments(x0 = 2007, y0 = ave.so.min+6.3, x1 = 2007, y1 = 2, col = "gray", lwd = 1)
+
+# Add a legend for league average
+legend(x = 1920-25, y = ave.so.max-1, legend = "League Average", col = "blue", lty = 1, lwd = 2, bty = "n", cex = 0.8)
+
+# Get the selected team from the dropdown
+selected_team <- input$my_team
+
+# Filter the Teams dataset for the selected team
+selected_team_data <- filter(Teams, name == selected_team)
+
+# Plot the ine for the selected team
+points(x = selected_team_data$yearID, y = selected_team_data$ave.so, type = "b", pch = 19, col = "darkorange4")
+
+# Get the x-coordinate for the legend
+legend_x <- min(league.year) -1
+legend_y <- league.ave[length(league.ave)]+1
+
+
+# Plot the legend for the selected team
+legend(legend_x, legend_y, legend = team.name, col = "darkorange4", pch = 19, bty = "n", cex = 0.8)
+})
+
+```
+
